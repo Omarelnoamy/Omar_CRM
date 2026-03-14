@@ -22,5 +22,5 @@ export async function createSupabaseServerClient() {
   return supabase;
 }
 
-const supabaseServerClient = createSupabaseServerClient();
+const supabaseServerClient = await createSupabaseServerClient();
 export default supabaseServerClient;
