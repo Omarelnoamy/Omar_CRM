@@ -3,9 +3,9 @@ import {
   AuthenticationError,
 } from "@/utils/authenticateUser";
 import { NextRequest, NextResponse } from "next/server";
-import { ListedLeadsSchema } from "@/services/leads/schema";
+import { ListedLeadsSchema } from "@/services/lead/schema";
 import { ZodError } from "zod";
-import { ListLeads } from "@/services/leads/service";
+import { ListLeads } from "@/services/lead/service";
 
 export async function GET(request: NextRequest) {
   try {

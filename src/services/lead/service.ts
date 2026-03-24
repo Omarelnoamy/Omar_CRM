@@ -1,5 +1,5 @@
 import { Prisma, Profile, Role } from "@/generated/prisma/client";
-import { ListedLeadsParams } from "@/services/leads/schema";
+import { ListedLeadsParams } from "@/services/lead/schema";
 import { dbListLeads } from "./db";
 
 export async function ListLeads(profile: Profile, params: ListedLeadsParams) {
