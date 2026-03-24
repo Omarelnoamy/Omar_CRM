@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
+import { AppShell } from "@/components/app-shell";
 
 export default async function DashboardLayout({
   children,
@@ -32,7 +33,9 @@ export default async function DashboardLayout({
   return (
     <SidebarProvider>
       <AppSidebar role={profile.role} user={profile} />
-      {children}
+      <AppShell role={profile.role} email={profile.email}>
+        {children}
+      </AppShell>
     </SidebarProvider>
   );
 }

@@ -47,8 +47,8 @@ model Lead {
   stage LeadStage @default(NEW)
   status LeadStatus @default(OPEN)
 
-  assignedToId String
-  assignedTo Profile @relation(fields: [assignedToId], references: [id])
+  assignedToId String?
+  assignedTo Profile? @relation(fields: [assignedToId], references: [id])
 
   activities Activity[]
 
@@ -82,6 +82,7 @@ model Activity {
 
   content String?
   type ActivityType
+  metadata Json?
 
   createdAt DateTime @default(now())
  
