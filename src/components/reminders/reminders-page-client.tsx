@@ -235,7 +235,8 @@ export function RemindersPageClient() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {reminder.status === "PENDING" ? (
+                        {reminder.status === "PENDING" ||
+                        reminder.status === "FIRED" ? (
                           <ReminderActionButtons reminderId={reminder.id} />
                         ) : (
                           <span className="text-slate-400">No actions</span>

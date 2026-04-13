@@ -125,7 +125,8 @@ export function Reminders({ leadId }: { leadId: string }) {
 function ReminderRow({ reminder }: { reminder: ReminderItem }) {
   const updateReminder = useUpdateReminder(reminder.id);
   const dueAt = toDate(reminder.dueAt);
-  const isPending = reminder.status === "PENDING";
+  const isActionable =
+    reminder.status === "PENDING" || reminder.status === "FIRED";
 
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-slate-200 p-4 sm:flex-row sm:items-center sm:justify-between">
@@ -135,7 +136,7 @@ function ReminderRow({ reminder }: { reminder: ReminderItem }) {
       </div>
       <div className="flex flex-wrap items-center gap-2">
         <ReminderStateBadge reminder={reminder} />
-        {isPending ? (
+        {isActionable ? (
           <>
             <Button
               size="sm"

@@ -8,6 +8,7 @@ import { formatLeadDate, StatusBadge } from "@/components/leads/reusable";
 import { Overview } from "@/components/leads/lead-details/lead-overview";
 import { Reminders } from "@/components/leads/lead-details/Reminders";
 import { Timeline } from "@/components/leads/lead-details/Timeline";
+import { AI } from "@/components/leads/lead-details/AI";
 
 export function LeadDetailClient({ id, role }: { id: string; role: Role }) {
   const { data, isLoading, isError } = useGetLead(id);
@@ -45,6 +46,7 @@ export function LeadDetailClient({ id, role }: { id: string; role: Role }) {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="timeline">Timeline</TabsTrigger>
           <TabsTrigger value="reminders">Reminders</TabsTrigger>
+          <TabsTrigger value="ai">AI</TabsTrigger>
           <TabsTrigger value="files">Files</TabsTrigger>
         </TabsList>
 
@@ -58,6 +60,10 @@ export function LeadDetailClient({ id, role }: { id: string; role: Role }) {
 
         <TabsContent value="reminders">
           <Reminders leadId={id} />
+        </TabsContent>
+
+        <TabsContent value="ai">
+          <AI leadId={id} />
         </TabsContent>
 
         <TabsContent value="files">

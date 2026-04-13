@@ -247,9 +247,12 @@ export const cancelReminder = async (
     throw new ReminderServiceError("Reminder not found", 404);
   }
 
-  if (reminder.status !== ReminderStatus.PENDING) {
+  if (
+    reminder.status !== ReminderStatus.PENDING &&
+    reminder.status !== ReminderStatus.FIRED
+  ) {
     throw new ReminderServiceError(
-      "Only pending reminders can be cancelled",
+      "Only pending or fired reminders can be cancelled",
       400,
     );
   }
@@ -261,8 +264,9 @@ export const cancelReminder = async (
     );
   }
 
-  // Cancel the QStash message if it exists
-  if (reminder.qstashMessageId) {
+  // If still pending, try cancelling the queued callback in QStash.
+  // Fired reminders are already delivered, so delete may fail or be unnecessary.
+  if (reminder.status === ReminderStatus.PENDING && reminder.qstashMessageId) {
     try {
       await qstash.messages.delete(reminder.qstashMessageId);
     } catch {

@@ -27,6 +27,7 @@ model Profile {
   activities Activity[]
   reminders     Reminder[]
   notifications Notification[]
+  aiLeadBriefs  AILeadBrief[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -55,6 +56,7 @@ model Lead {
   activities Activity[]
   reminders     Reminder[]
   notifications Notification[]
+  aiLeadBriefs  AILeadBrief[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -144,4 +146,19 @@ model Notification {
   readAt      DateTime?
   readState   NotificationReadState   @default(UNREAD)
   createdAt   DateTime                @default(now())
+}
+
+model AILeadBrief {
+  id String @id @default(uuid())
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id])
+
+  brief Json
+
+  createdById String
+  createdBy   Profile @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
