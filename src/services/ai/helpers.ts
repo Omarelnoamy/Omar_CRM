@@ -103,7 +103,7 @@ Suggest:
 2. Three specific follow-up questions based on what was discussed
 3. Two common objections this lead might raise, and how to handle them
 4. The single most important next step for the agent
-5. A suggested reminder (due date in YYYY-MM-DD format, title, and context)
+5. A suggested reminder (due date/time as ISO-8601, e.g. 2026-04-15T14:00:00.000Z; title; context)
 
 Be specific. Reference details from the call and history. Adapt to the lead's stage and situation.`;
 }

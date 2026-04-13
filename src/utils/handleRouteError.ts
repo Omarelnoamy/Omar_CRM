@@ -1,3 +1,4 @@
+import { AIServiceError } from "@/services/ai/service";
 import { LeadServiceError } from "@/services/lead/service";
 import { NotificationServiceError } from "@/services/notification/service";
 import { ReminderServiceError } from "@/services/reminders/service";
@@ -25,6 +26,12 @@ export const handleRouteError = (error: unknown) => {
     );
   }
   if (error instanceof NotificationServiceError) {
+    return NextResponse.json(
+      { error: error.message },
+      { status: error.statusCode },
+    );
+  }
+  if (error instanceof AIServiceError) {
     return NextResponse.json(
       { error: error.message },
       { status: error.statusCode },

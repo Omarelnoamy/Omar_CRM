@@ -123,7 +123,7 @@ export const AI = ({ leadId }: { leadId: string }) => {
       )}
 
       <Dialog open={isGeneratedBriefOpen} onOpenChange={setIsGeneratedBriefOpen}>
-        <DialogContent className="max-h-[80vh] max-w-2xl overflow-y-auto">
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-5xl">
           <DialogHeader>
             <DialogTitle>AI-Generated Brief</DialogTitle>
           </DialogHeader>

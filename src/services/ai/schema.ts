@@ -68,9 +68,12 @@ export const callFollowUpSchema = z.object({
   suggestedReminder: z.object({
     title: z.string().describe("Short, actionable reminder title"),
     note: z.string().describe("Context for the reminder"),
-    suggestedDueAt: z.coerce
-      .date()
-      .describe("Suggested due date in ISO format"),
+    // ISO-8601 string only: z.date() cannot be converted to JSON Schema for Output.object().
+    suggestedDueAt: z
+      .string()
+      .describe(
+        "Suggested due date and time as ISO-8601 (e.g. 2026-04-15T14:00:00.000Z)",
+      ),
   }),
 });
 
@@ -86,3 +89,19 @@ export const saveLeadBriefSchema = z.object({
 });
 
 export type SaveLeadBriefRequest = z.infer<typeof saveLeadBriefSchema>;
+
+export const generateCallFollowUpRequestSchema = z.object({
+  leadId: z.uuid(),
+  callOutcome: z.enum([
+    "NO_ANSWER",
+    "ANSWERED",
+    "WRONG_NUMBER",
+    "BUSY",
+    "CALL_BACK_LATER",
+  ]),
+  agentNotes: z.string().trim().max(5000).optional(),
+});
+
+export type GenerateCallFollowUpRequest = z.infer<
+  typeof generateCallFollowUpRequestSchema
+>;
