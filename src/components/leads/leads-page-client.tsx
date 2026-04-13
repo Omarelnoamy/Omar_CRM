@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { Inbox } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Inbox, Search } from "lucide-react";
 
+import { LeadStage, LeadStatus } from "@/generated/prisma/enums";
 import { Role } from "@/generated/prisma/client";
 import {
   Table,
@@ -16,12 +17,39 @@ import {
 import { useGetLeads } from "@/lib/tanstack/useLeads";
 import { CreateLeadDialog } from "@/components/leads/create-lead-dialog";
 import {
+  formatEnumLabel,
+  formatLeadDate,
   Pagination,
   StageBadge,
   StatusBadge,
 } from "@/components/leads/reusable";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { isAxiosError } from "axios";
+import type { ListLeadsParams } from "@/services/lead/schema";
+
+const ALL_VALUE = "__all__";
+
+const leadStatuses = [
+  LeadStatus.OPEN,
+  LeadStatus.WON,
+  LeadStatus.LOST,
+] as const;
+
+const leadStages = [
+  LeadStage.NEW,
+  LeadStage.CONTACTED,
+  LeadStage.QUALIFIED,
+  LeadStage.NEGOTIATION,
+] as const;
 
 export function LeadsPageClient({ role }: { role: Role }) {
   const [page, setPage] = useState(1);
@@ -29,10 +57,53 @@ export function LeadsPageClient({ role }: { role: Role }) {
   const isManagerOrAdmin = role === "MANAGER" || role === "ADMIN";
   const canCreateLead = role !== "AGENT";
 
-  const { data, isLoading, isError, error, refetch, isFetching } = useGetLeads({
+  const [statusFilter, setStatusFilter] = useState("");
+  const [stageFilter, setStageFilter] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [createdFrom, setCreatedFrom] = useState("");
+  const [createdTo, setCreatedTo] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchInput.trim());
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [searchInput]);
+
+  const listParams = useMemo((): ListLeadsParams => {
+    const base: ListLeadsParams = {
+      page,
+      pageSize,
+    };
+    if (debouncedSearch) {
+      base.search = debouncedSearch;
+    }
+    if (statusFilter) {
+      base.status = statusFilter as ListLeadsParams["status"];
+    }
+    if (stageFilter) {
+      base.stage = stageFilter as ListLeadsParams["stage"];
+    }
+    if (createdFrom) {
+      base.createdFrom = createdFrom;
+    }
+    if (createdTo) {
+      base.createdTo = createdTo;
+    }
+    return base;
+  }, [
     page,
     pageSize,
-  });
+    debouncedSearch,
+    statusFilter,
+    stageFilter,
+    createdFrom,
+    createdTo,
+  ]);
+
+  const { data, isLoading, isError, error, refetch, isFetching } =
+    useGetLeads(listParams);
 
   const errorDetail = (() => {
     if (!isAxiosError(error)) return null;
@@ -53,6 +124,22 @@ export function LeadsPageClient({ role }: { role: Role }) {
   const endItem = total === 0 ? 0 : Math.min(page * pageSize, total);
   const hasLeads = leads.length > 0;
 
+  function clearFilters() {
+    setStatusFilter("");
+    setStageFilter("");
+    setSearchInput("");
+    setDebouncedSearch("");
+    setCreatedFrom("");
+    setCreatedTo("");
+  }
+
+  const hasActiveFilters =
+    Boolean(statusFilter) ||
+    Boolean(stageFilter) ||
+    Boolean(debouncedSearch) ||
+    Boolean(createdFrom) ||
+    Boolean(createdTo);
+
   return (
     <div className="space-y-6 px-4 pb-8 pt-2 md:px-6 md:pb-10">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -65,10 +152,104 @@ export function LeadsPageClient({ role }: { role: Role }) {
           </p>
         </div>
 
-        {canCreateLead ? <CreateLeadDialog /> : null}
+        {canCreateLead ? (
+          <CreateLeadDialog
+            triggerClassName="h-10 rounded-xl bg-sky-600 px-4 text-white shadow-sm hover:bg-sky-700"
+          />
+        ) : null}
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="flex flex-col gap-4 border-b border-slate-200 bg-slate-50/80 px-4 py-4 md:flex-row md:flex-wrap md:items-end md:gap-3">
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-slate-500">Status</Label>
+            <Select
+              value={statusFilter || ALL_VALUE}
+              onValueChange={(v) =>
+                setStatusFilter(v === ALL_VALUE ? "" : v)
+              }
+            >
+              <SelectTrigger className="h-10 w-full min-w-[160px] rounded-lg border-slate-200 bg-white md:w-[180px]">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>All statuses</SelectItem>
+                {leadStatuses.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {formatEnumLabel(s)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-slate-500">Stage</Label>
+            <Select
+              value={stageFilter || ALL_VALUE}
+              onValueChange={(v) => setStageFilter(v === ALL_VALUE ? "" : v)}
+            >
+              <SelectTrigger className="h-10 w-full min-w-[160px] rounded-lg border-slate-200 bg-white md:w-[180px]">
+                <SelectValue placeholder="All stages" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={ALL_VALUE}>All stages</SelectItem>
+                {leadStages.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {formatEnumLabel(s)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid min-w-0 flex-1 gap-1.5 md:min-w-[220px]">
+            <Label className="text-xs text-slate-500">Search</Label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" />
+              <Input
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="Search leads…"
+                className="h-10 rounded-lg border-slate-200 bg-white pl-9"
+                aria-label="Search leads"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-slate-500">Created from</Label>
+            <Input
+              type="date"
+              value={createdFrom}
+              onChange={(e) => setCreatedFrom(e.target.value)}
+              className="h-10 w-full rounded-lg border-slate-200 bg-white md:w-[160px]"
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label className="text-xs text-slate-500">Created to</Label>
+            <Input
+              type="date"
+              value={createdTo}
+              onChange={(e) => setCreatedTo(e.target.value)}
+              className="h-10 w-full rounded-lg border-slate-200 bg-white md:w-[160px]"
+            />
+          </div>
+
+          {hasActiveFilters ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-10 shrink-0 border-slate-200 bg-white"
+              onClick={clearFilters}
+            >
+              Clear filters
+            </Button>
+          ) : null}
+        </div>
+
         {isLoading ? (
           <div className="px-6 py-16 text-center text-sm text-slate-500">
             {isFetching ? "Refreshing leads…" : "Loading leads…"}
@@ -112,6 +293,9 @@ export function LeadsPageClient({ role }: { role: Role }) {
                     <TableHead className="bg-slate-50/80 px-5 text-[11px] tracking-[0.18em] text-slate-500">
                       Stage
                     </TableHead>
+                    <TableHead className="bg-slate-50/80 px-5 text-[11px] tracking-[0.18em] text-slate-500">
+                      Created
+                    </TableHead>
                     {isManagerOrAdmin ? (
                       <TableHead className="bg-slate-50/80 px-5 text-[11px] tracking-[0.18em] text-slate-500">
                         Assigned Agent
@@ -144,6 +328,9 @@ export function LeadsPageClient({ role }: { role: Role }) {
                       </TableCell>
                       <TableCell className="px-5 py-4">
                         <StageBadge stage={lead.stage} />
+                      </TableCell>
+                      <TableCell className="px-5 py-4 text-slate-600">
+                        {formatLeadDate(lead.createdAt)}
                       </TableCell>
                       {isManagerOrAdmin ? (
                         <TableCell className="px-5 py-4">
@@ -184,15 +371,24 @@ export function LeadsPageClient({ role }: { role: Role }) {
                 </div>
                 <div className="space-y-2">
                   <p className="text-xl font-semibold text-slate-900">
-                    No leads yet
+                    {hasActiveFilters ? "No matching leads" : "No leads yet"}
                   </p>
                   <p className="max-w-md text-sm text-slate-500">
-                    {canCreateLead
-                      ? "Create your first lead to start building the pipeline for this CRM."
-                      : "Leads assigned to you will appear here once a manager or admin adds them."}
+                    {hasActiveFilters
+                      ? "Try adjusting filters or clear them to see more results."
+                      : canCreateLead
+                        ? "Create your first lead to start building the pipeline for this CRM."
+                        : "Leads assigned to you will appear here once a manager or admin adds them."}
                   </p>
                 </div>
-                {canCreateLead ? <CreateLeadDialog /> : null}
+                <div className="flex flex-wrap items-center justify-center gap-2">
+                  {hasActiveFilters ? (
+                    <Button type="button" variant="outline" onClick={clearFilters}>
+                      Clear filters
+                    </Button>
+                  ) : null}
+                  {canCreateLead ? <CreateLeadDialog /> : null}
+                </div>
               </div>
             </div>
           )

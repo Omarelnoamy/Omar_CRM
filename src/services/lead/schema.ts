@@ -2,14 +2,25 @@ import { LeadStage, LeadStatus } from "@/generated/prisma/enums";
 import { PaginationMeta } from "@/utils/pagination";
 import { z } from "zod";
 
+const optionalDayString = z.preprocess(
+  (v) => (typeof v === "string" && v.trim() === "" ? undefined : v),
+  z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD")
+    .optional(),
+);
+
 export const listLeadsQuerySchema = z.object({
   page: z.coerce.number().min(1).default(1),
   pageSize: z.coerce.number().min(1).max(100).default(10),
   search: z.string().trim().min(1).optional(),
+  status: z.nativeEnum(LeadStatus).optional(),
+  stage: z.nativeEnum(LeadStage).optional(),
+  createdFrom: optionalDayString,
+  createdTo: optionalDayString,
 });
 
-export type ListedLeadsParams = z.infer<typeof listLeadsQuerySchema>;
-export type ListLeadsParams = ListedLeadsParams;
+export type ListLeadsParams = z.infer<typeof listLeadsQuerySchema>;
 
 export const createLeadSchema = z.object({
   name: z.string().min(1),
@@ -32,7 +43,7 @@ export const editLeadSchema = z.object({
   email: z.email().optional(),
   stage: z.nativeEnum(LeadStage).optional(),
   status: z.nativeEnum(LeadStatus).optional(),
-  assignedToId: z.string().uuid().optional(),
+  assignedToId: z.union([z.string().uuid(), z.null()]).optional(),
 });
 
 export type EditLeadRequest = z.infer<typeof editLeadSchema>;

@@ -1,7 +1,9 @@
-export default function Reminders() {
+import { RemindersPageClient } from "@/components/reminders/reminders-page-client";
+
+export default function RemindersPage() {
   return (
-    <div>
-      <h1>Reminders</h1>
+    <div className="p-6">
+      <RemindersPageClient />
     </div>
   );
 }

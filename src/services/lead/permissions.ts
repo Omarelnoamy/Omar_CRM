@@ -10,3 +10,11 @@ export function canEditLeadContactFields(role: Role, data: EditLeadRequest) {
 
   return !contactFields.some((field) => data[field] !== undefined);
 }
+
+export function canEditLeadAssignment(role: Role, data: EditLeadRequest) {
+  if (role !== Role.AGENT) {
+    return true;
+  }
+
+  return data.assignedToId === undefined;
+}

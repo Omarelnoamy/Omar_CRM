@@ -8,12 +8,18 @@ export function buildActivityContent(
         to: unknown;
       }
     | undefined,
+  content?: string,
 ) {
+  if (
+    activityType === ActivityType.NOTE ||
+    activityType === ActivityType.CALL_ATTEMPT
+  ) {
+    return content ?? null;
+  }
+
   if (!meta) {
     return null;
   }
-
-  console.log(meta);
 
   switch (activityType) {
     case ActivityType.STATUS_CHANGE:

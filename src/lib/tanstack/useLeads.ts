@@ -1,6 +1,7 @@
 import {
   CreateLeadRequest,
   EditLeadRequest,
+  LeadAssigneeSummary,
   LeadDetail,
   ListLeadsParams,
   ListLeadsResponseData,
@@ -15,7 +16,11 @@ export function useGetLeads(params: ListLeadsParams) {
       const { data } = await api.get("/leads", {
         params,
       });
-      return data.data;
+      const payload = data?.data;
+      if (payload == null) {
+        throw new Error("Invalid response from leads API");
+      }
+      return payload;
     },
   });
 }
@@ -38,9 +43,28 @@ export function useGetLead(id: string) {
     queryKey: ["lead", id],
     queryFn: async (): Promise<LeadDetail> => {
       const { data } = await api.get(`/leads/${id}`);
-      return data.data;
+      const payload = data?.data;
+      if (payload == null) {
+        throw new Error("Invalid response from lead API");
+      }
+      return payload;
     },
     enabled: Boolean(id),
+  });
+}
+
+export function useAssignableAgents(enabled: boolean) {
+  return useQuery({
+    queryKey: ["assignees"],
+    queryFn: async (): Promise<LeadAssigneeSummary[]> => {
+      const { data } = await api.get("/leads/assignees");
+      const payload = data?.data;
+      if (payload == null) {
+        throw new Error("Invalid response from assignees API");
+      }
+      return payload;
+    },
+    enabled,
   });
 }
 

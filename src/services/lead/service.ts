@@ -1,8 +1,19 @@
 import { ActivityType, Prisma, Profile, Role } from "@/generated/prisma/client";
-import { CreateLeadRequest, EditLeadRequest, ListLeadsParams } from "./schema";
-import { dbCreateLead, dbGetLeadById, dbListLeads, dbUpdateLead } from "./db";
+import {
+  CreateLeadRequest,
+  EditLeadRequest,
+  LeadDetail,
+  ListLeadsParams,
+} from "./schema";
+import {
+  dbCreateLead,
+  dbFindAssignableProfileById,
+  dbGetLeadById,
+  dbListLeads,
+  dbUpdateLead,
+} from "./db";
 import { buildLeadChangeActivities } from "./helper";
-import { canEditLeadContactFields } from "./permissions";
+import { canEditLeadAssignment, canEditLeadContactFields } from "./permissions";
 import { ActivityService } from "../activity";
 import { prisma } from "@/lib/prisma";
 
@@ -16,16 +27,46 @@ export class LeadServiceError extends Error {
   }
 }
 
+function dayStartUtc(isoDay: string): Date {
+  return new Date(`${isoDay}T00:00:00.000Z`);
+}
+
+function dayEndUtc(isoDay: string): Date {
+  return new Date(`${isoDay}T23:59:59.999Z`);
+}
+
 export async function listLeads(profile: Profile, params: ListLeadsParams) {
-  // Build where clause
   const where: Prisma.LeadWhereInput = {};
 
-  // Role-scoping contract:
-  // - AGENT can only read assigned leads.
-  // - MANAGER/ADMIN can read all leads.
-  // UI-level bulk actions (checkboxes/reassign toolbar) should respect this scope.
   if (profile.role === Role.AGENT) {
     where.assignedToId = profile.id;
+  }
+
+  if (params.status) {
+    where.status = params.status;
+  }
+
+  if (params.stage) {
+    where.stage = params.stage;
+  }
+
+  if (params.search) {
+    const q = params.search;
+    where.OR = [
+      { name: { contains: q, mode: "insensitive" } },
+      { email: { contains: q, mode: "insensitive" } },
+      { phone: { contains: q, mode: "insensitive" } },
+    ];
+  }
+
+  if (params.createdFrom || params.createdTo) {
+    where.createdAt = {};
+    if (params.createdFrom) {
+      where.createdAt.gte = dayStartUtc(params.createdFrom);
+    }
+    if (params.createdTo) {
+      where.createdAt.lte = dayEndUtc(params.createdTo);
+    }
   }
 
   return dbListLeads(where, params);
@@ -88,11 +129,35 @@ export async function updateLead(
     throw new LeadServiceError("Unauthorized", 403);
   }
 
+  if (!canEditLeadAssignment(profile.role, data)) {
+    throw new LeadServiceError("Unauthorized", 403);
+  }
+
+  const newLeadForActivities: Partial<LeadDetail> = { ...data };
+  if (data.assignedToId !== undefined) {
+    const prev = existingLead.assignedToId ?? null;
+    const next = data.assignedToId ?? null;
+    if (prev !== next) {
+      if (data.assignedToId === null) {
+        newLeadForActivities.assignedTo = null;
+      } else {
+        const assignee = await dbFindAssignableProfileById(data.assignedToId);
+        newLeadForActivities.assignedTo = assignee
+          ? {
+              id: assignee.id,
+              name: assignee.name,
+              email: assignee.email,
+            }
+          : null;
+      }
+    }
+  }
+
   const activities = buildLeadChangeActivities({
     leadId: id,
     actorId: profile.id,
     existingLead,
-    newLead: data,
+    newLead: newLeadForActivities,
   });
 
   const result = await prisma.$transaction(async (tx) => {

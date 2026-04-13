@@ -15,9 +15,14 @@ export async function createSupabaseServerClient() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => {
-            cookieStore.set(name, value, options);
-          });
+          try {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options);
+            });
+          } catch {
+            // `cookies().set` is only allowed in Route Handlers and Server Actions (Next.js 15+).
+            // Session refresh is handled in `proxy.ts`; RSC layouts may only read cookies.
+          }
         },
       },
     },

@@ -1,5 +1,9 @@
-import { createActivities, getLeadActivities } from "./server";
-import { getLeadActivitiesSchema } from "./schema";
+import { createActivities, getLeadActivities } from "./service";
+import {
+  createCallAttemptSchema,
+  createNoteSchema,
+  getLeadActivitiesSchema,
+} from "./schema";
 
 export const ActivityService = {
   create: createActivities,
@@ -8,6 +12,16 @@ export const ActivityService = {
 
 export const ActivitySchema = {
   getByLeadId: getLeadActivitiesSchema,
+  createNote: createNoteSchema,
+  createCallAttempt: createCallAttemptSchema,
 } as const;
 
-export type { CreateActivityRequest } from "./schema";
+export type {
+  ActivitySummaryItem,
+  CallOutcome,
+  CreateActivityRequest,
+  CreateCallAttemptRequest,
+  CreateNoteRequest,
+} from "./schema";
+
+export { CALL_OUTCOME_LABELS } from "./schema";

@@ -22,7 +22,11 @@ function getTextAreaClassName() {
   return "min-h-28 w-full rounded-lg border border-input bg-transparent px-2.5 py-2 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50";
 }
 
-export function CreateLeadDialog() {
+export function CreateLeadDialog({
+  triggerClassName,
+}: {
+  triggerClassName?: string;
+} = {}) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -70,7 +74,9 @@ export function CreateLeadDialog() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button className="h-10 rounded-xl px-4 shadow-sm">
+        <Button
+          className={triggerClassName ?? "h-10 rounded-xl px-4 shadow-sm"}
+        >
           <Plus className="size-4" />
           Create Lead
         </Button>

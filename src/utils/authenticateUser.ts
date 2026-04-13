@@ -18,16 +18,19 @@ export async function authenticateUser(allowedRoles?: Role[]) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
   //step2 : If no user return error message
   if (!user) {
     throw new AuthenticationError("Unauthorized", 401);
   }
+
   //step3 : fetch user from the database
   const profile = await prisma.profile.findUnique({
     where: {
       id: user.id,
     },
   });
+
   if (!profile) {
     throw new AuthenticationError("User not found", 404);
   }

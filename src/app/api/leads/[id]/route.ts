@@ -25,10 +25,9 @@ export async function PATCH(
   try {
     const profile = await authenticateUser();
     const { id } = leadIdParamsSchema.parse(await params);
-    const body = await request.json();
-    const data = editLeadSchema.parse(body);
-    const result = await updateLead(profile, id, data);
-    return NextResponse.json({ success: true, data: result.lead });
+    const body = editLeadSchema.parse(await request.json());
+    const { lead } = await updateLead(profile, id, body);
+    return NextResponse.json({ success: true, data: lead });
   } catch (error) {
     return handleRouteError(error);
   }

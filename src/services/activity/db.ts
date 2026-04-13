@@ -1,5 +1,6 @@
-import { Prisma } from "@/generated/prisma/client";
+import { ActivityType, Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { CreateAIActivityRequest } from "./schema";
 
 // type CreateActivityData = {
 //   leadId: string;
@@ -13,6 +14,37 @@ import { prisma } from "@/lib/prisma";
 // type CreateActivityData = Omit<CreateActivityRequest, "meta"> & {
 //   content: string;
 // };
+
+export async function dbCreateActivity(
+  data: {
+    leadId: string;
+    actorId: string;
+    type: ActivityType;
+    content: string | null;
+  },
+  tx?: Prisma.TransactionClient,
+) {
+  const client = tx ?? prisma;
+  return client.activity.create({
+    data: {
+      leadId: data.leadId,
+      actorId: data.actorId,
+      type: data.type,
+      content: data.content,
+    },
+    select: {
+      id: true,
+      type: true,
+      createdAt: true,
+      content: true,
+      actor: {
+        select: {
+          name: true,
+        },
+      },
+    },
+  });
+}
 
 export async function dbCreateActivities(
   activities: Prisma.ActivityCreateManyInput[],
@@ -60,4 +92,12 @@ export async function dbGetLeadActivities(
     activities,
     total,
   };
+}
+
+export async function dbCreateAIActivity(data: CreateAIActivityRequest) {
+  const activity = await prisma.activity.create({
+    data,
+  });
+
+  return activity;
 }

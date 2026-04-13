@@ -13,10 +13,17 @@ export async function GET(request: NextRequest) {
     const search =
       searchRaw && searchRaw.trim() !== "" ? searchRaw.trim() : undefined;
 
+    const statusRaw = sp.get("status");
+    const stageRaw = sp.get("stage");
+
     const params = listLeadsQuerySchema.parse({
       page: sp.get("page"),
       pageSize: sp.get("pageSize"),
       search,
+      status: statusRaw && statusRaw.trim() !== "" ? statusRaw : undefined,
+      stage: stageRaw && stageRaw.trim() !== "" ? stageRaw : undefined,
+      createdFrom: sp.get("createdFrom") ?? undefined,
+      createdTo: sp.get("createdTo") ?? undefined,
     });
 
     const data = await listLeads(profile, params);

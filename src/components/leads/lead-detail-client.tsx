@@ -5,7 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useGetLead } from "@/lib/tanstack/useLeads";
 import { formatLeadDate, StatusBadge } from "@/components/leads/reusable";
-import { Overview } from "@/components/leads/lead-details/Overview";
+import { Overview } from "@/components/leads/lead-details/lead-overview";
+import { Reminders } from "@/components/leads/lead-details/Reminders";
 import { Timeline } from "@/components/leads/lead-details/Timeline";
 
 export function LeadDetailClient({ id, role }: { id: string; role: Role }) {
@@ -56,11 +57,7 @@ export function LeadDetailClient({ id, role }: { id: string; role: Role }) {
         </TabsContent>
 
         <TabsContent value="reminders">
-          <Card>
-            <CardContent className="py-8 text-sm text-muted-foreground">
-              Reminders will be built in a later session.
-            </CardContent>
-          </Card>
+          <Reminders leadId={id} />
         </TabsContent>
 
         <TabsContent value="files">

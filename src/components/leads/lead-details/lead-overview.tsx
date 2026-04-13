@@ -8,14 +8,18 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { getApiErrorMessage } from "@/lib/get-api-error-message";
-import { useEditLead } from "@/lib/tanstack/useLeads";
+import { useAssignableAgents, useEditLead } from "@/lib/tanstack/useLeads";
 import {
   formatEnumLabel,
   formatLeadDate,
   StageBadge,
   StatusBadge,
 } from "@/components/leads/reusable";
-import { LeadDetail } from "@/services/lead/schema";
+import type {
+  EditLeadRequest,
+  LeadAssigneeSummary,
+  LeadDetail,
+} from "@/services/lead/schema";
 
 const leadStatuses = [LeadStatus.OPEN, LeadStatus.WON, LeadStatus.LOST];
 const leadStages = [
@@ -29,10 +33,52 @@ function getFieldClassName() {
   return "h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none transition-colors focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50";
 }
 
+/** Task 4: managers/admins may edit PII and reassign leads; server persists activity before/after values. */
+function roleIsManagerOrAdmin(role: Role): boolean {
+  return role === "MANAGER" || role === "ADMIN";
+}
+
+function agentsForAssignmentSelect(
+  agents: LeadAssigneeSummary[],
+  options: {
+    isEditing: boolean;
+    draft: { assignedToId: string } | null;
+    canEditPrivilegedFields: boolean;
+    assignedTo: LeadDetail["assignedTo"];
+  },
+): LeadAssigneeSummary[] {
+  const { isEditing, draft, canEditPrivilegedFields, assignedTo } = options;
+  if (!isEditing || !draft || !canEditPrivilegedFields) {
+    return agents;
+  }
+  const id = draft.assignedToId.trim();
+  if (
+    id &&
+    !agents.some((agent) => agent.id === id) &&
+    assignedTo !== null &&
+    assignedTo.id === id
+  ) {
+    return [
+      ...agents,
+      {
+        id: assignedTo.id,
+        name: assignedTo.name,
+        email: assignedTo.email,
+      },
+    ];
+  }
+  return agents;
+}
+
 export function Overview({ data, role }: { data: LeadDetail; role: Role }) {
   const editLead = useEditLead(data.id);
+  const canEditPrivilegedFields = roleIsManagerOrAdmin(role);
 
   const [isEditing, setIsEditing] = useState(false);
+  const { data: agents = [] } = useAssignableAgents(
+    canEditPrivilegedFields && isEditing,
+  );
+
   const [draft, setDraft] = useState<{
     name: string;
     email: string;
@@ -48,24 +94,17 @@ export function Overview({ data, role }: { data: LeadDetail; role: Role }) {
       return;
     }
 
-    const payload: {
-      name?: string;
-      email?: string;
-      phone?: string;
-      status?: LeadStatus;
-      stage?: LeadStage;
-      assignedToId?: string;
-    } = {};
+    const payload: EditLeadRequest = {};
 
-    if (canEditContactFields && draft.name !== data.name) {
+    if (canEditPrivilegedFields && draft.name !== data.name) {
       payload.name = draft.name;
     }
 
-    if (canEditContactFields && draft.email !== data.email) {
+    if (canEditPrivilegedFields && draft.email !== data.email) {
       payload.email = draft.email;
     }
 
-    if (canEditContactFields && draft.phone !== data.phone) {
+    if (canEditPrivilegedFields && draft.phone !== data.phone) {
       payload.phone = draft.phone;
     }
 
@@ -77,12 +116,12 @@ export function Overview({ data, role }: { data: LeadDetail; role: Role }) {
       payload.stage = draft.stage;
     }
 
-    if (
-      isManagerOrAdmin &&
-      draft.assignedToId &&
-      draft.assignedToId !== data.assignedToId
-    ) {
-      payload.assignedToId = draft.assignedToId;
+    if (canEditPrivilegedFields) {
+      const next = draft.assignedToId.trim() === "" ? null : draft.assignedToId;
+      const cur = data.assignedToId ?? null;
+      if (next !== cur) {
+        payload.assignedToId = next;
+      }
     }
 
     if (Object.keys(payload).length === 0) {
@@ -130,9 +169,6 @@ export function Overview({ data, role }: { data: LeadDetail; role: Role }) {
   const selectedEmail = draft?.email ?? data.email;
   const selectedPhone = draft?.phone ?? data.phone;
 
-  const isManagerOrAdmin = role === "MANAGER" || role === "ADMIN";
-  const canEditContactFields = isManagerOrAdmin;
-
   return (
     <div className="space-y-6">
       <div className="flex justify-end">
@@ -162,7 +198,7 @@ export function Overview({ data, role }: { data: LeadDetail; role: Role }) {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Full Name</p>
-                {isEditing && canEditContactFields ? (
+                {isEditing && canEditPrivilegedFields ? (
                   <Input
                     value={selectedName}
                     onChange={(event) =>
@@ -180,7 +216,7 @@ export function Overview({ data, role }: { data: LeadDetail; role: Role }) {
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Email</p>
-                {isEditing && canEditContactFields ? (
+                {isEditing && canEditPrivilegedFields ? (
                   <Input
                     type="email"
                     value={selectedEmail}
@@ -199,7 +235,7 @@ export function Overview({ data, role }: { data: LeadDetail; role: Role }) {
               </div>
               <div className="space-y-1">
                 <p className="text-sm text-muted-foreground">Phone</p>
-                {isEditing && canEditContactFields ? (
+                {isEditing && canEditPrivilegedFields ? (
                   <Input
                     value={selectedPhone}
                     onChange={(event) =>
@@ -305,7 +341,39 @@ export function Overview({ data, role }: { data: LeadDetail; role: Role }) {
               <CardTitle>Assigned Agent</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              {data.assignedTo ? (
+              {canEditPrivilegedFields && isEditing && draft ? (
+                <div className="space-y-2">
+                  <label
+                    className="text-sm text-muted-foreground"
+                    htmlFor="assigned-agent"
+                  >
+                    Assign to
+                  </label>
+                  <select
+                    id="assigned-agent"
+                    className={getFieldClassName()}
+                    value={draft.assignedToId}
+                    onChange={(event) =>
+                      setDraft((d) =>
+                        d ? { ...d, assignedToId: event.target.value } : d,
+                      )
+                    }
+                    disabled={editLead.isPending}
+                  >
+                    <option value="">Unassigned</option>
+                    {agentsForAssignmentSelect(agents, {
+                      isEditing,
+                      draft,
+                      canEditPrivilegedFields,
+                      assignedTo: data.assignedTo,
+                    }).map((agent) => (
+                      <option key={agent.id} value={agent.id}>
+                        {agent.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : data.assignedTo ? (
                 <div className="space-y-1">
                   <p className="font-medium">{data.assignedTo.name}</p>
                   <p className="text-sm text-muted-foreground">
@@ -315,12 +383,6 @@ export function Overview({ data, role }: { data: LeadDetail; role: Role }) {
               ) : (
                 <p className="text-sm text-muted-foreground">Unassigned</p>
               )}
-
-              {isManagerOrAdmin ? (
-                <p className="text-sm text-muted-foreground">
-                  Assignment changes will be built in Session 3.
-                </p>
-              ) : null}
             </CardContent>
           </Card>
 

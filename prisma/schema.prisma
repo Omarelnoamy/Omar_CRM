@@ -25,6 +25,8 @@ model Profile {
 
   leads Lead[]
   activities Activity[]
+  reminders     Reminder[]
+  notifications Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -51,6 +53,8 @@ model Lead {
   assignedTo Profile? @relation(fields: [assignedToId], references: [id])
 
   activities Activity[]
+  reminders     Reminder[]
+  notifications Notification[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -82,8 +86,7 @@ model Activity {
 
   content String?
   type ActivityType
-  metadata Json?
-
+  
   createdAt DateTime @default(now())
  
 
@@ -100,4 +103,45 @@ enum ActivityType {
   ATTACHMENT_ADDED
   AI_LEAD_BRIEF_GENERATED
   AI_FOLLOWUP_DRAFT_GENERATED
+}
+
+enum ReminderStatus {
+  PENDING
+  FIRED
+  CANCELLED
+  COMPLETED
+}
+
+enum NotificationReadState {
+  UNREAD
+  READ
+}
+
+model Reminder {
+  id              String         @id @default(uuid())
+  leadId          String
+  lead            Lead           @relation(fields: [leadId], references: [id])
+  assignedToId    String
+  assignedTo      Profile        @relation(fields: [assignedToId], references: [id])
+  title           String
+  note            String?
+  dueAt           DateTime
+  status          ReminderStatus @default(PENDING)
+  firedAt         DateTime?
+  qstashMessageId String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+}
+
+model Notification {
+  id          String                  @id @default(uuid())
+  recipientId String
+  recipient   Profile                 @relation(fields: [recipientId], references: [id])
+  leadId      String?
+  lead        Lead?                   @relation(fields: [leadId], references: [id])
+  title       String
+  body        String
+  readAt      DateTime?
+  readState   NotificationReadState   @default(UNREAD)
+  createdAt   DateTime                @default(now())
 }

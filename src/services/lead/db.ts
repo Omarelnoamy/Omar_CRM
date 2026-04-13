@@ -78,11 +78,17 @@ export async function dbFindAssignableAgentById(
   });
 }
 
-export async function dbListAssignableProfiles(): Promise<LeadAssigneeSummary[]> {
-  return prisma.profile.findMany({
-    where: { role: Role.AGENT, isActive: true },
+/** Resolves display name for assignment activity (agents and managers). */
+export async function dbFindAssignableProfileById(
+  id: string,
+): Promise<LeadAssigneeSummary | null> {
+  return prisma.profile.findFirst({
+    where: {
+      id,
+      role: { in: [Role.AGENT, Role.MANAGER] },
+      isActive: true,
+    },
     select: assigneeSelect,
-    orderBy: { name: "asc" },
   });
 }
 
@@ -116,4 +122,15 @@ export async function dbUpdateLead(
   });
 
   return updatedLead;
+}
+
+export async function dbListAssignableProfiles(): Promise<LeadAssigneeSummary[]> {
+  return prisma.profile.findMany({
+    where: {
+      role: { in: [Role.AGENT, Role.MANAGER] },
+      isActive: true,
+    },
+    select: assigneeSelect,
+    orderBy: { name: "asc" },
+  });
 }

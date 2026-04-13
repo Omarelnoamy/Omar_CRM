@@ -1,25 +1,25 @@
-import { ActivitySchema, ActivityService } from "@/services/activity";
+import { leadIdParamsSchema } from "@/services/lead/schema";
+import { ActivityService, ActivitySchema } from "@/services/activity";
 import { authenticateUser } from "@/utils/authenticateUser";
 import { handleRouteError } from "@/utils/handleRouteError";
 import { NextRequest, NextResponse } from "next/server";
 
-// GET /api/leads/[id]/activities?page=1&pageSize=10
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   try {
-    const { id: leadId } = await params;
     const profile = await authenticateUser();
-
+    const { id: leadId } = leadIdParamsSchema.parse(await params);
     const sp = request.nextUrl.searchParams;
-    const validated = ActivitySchema.getByLeadId.parse({
+
+    const queryInput = ActivitySchema.getByLeadId.parse({
       leadId,
       page: sp.get("page"),
       pageSize: sp.get("pageSize"),
     });
 
-    const data = await ActivityService.getByLeadId(validated, {
+    const data = await ActivityService.getByLeadId(queryInput, {
       id: profile.id,
       role: profile.role,
     });
