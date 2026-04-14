@@ -29,9 +29,10 @@ import {
   type CallOutcome,
 } from "@/services/activity/schema";
 import { isAxiosError } from "axios";
-import { Loader2, Phone, Sparkles, AlertTriangle } from "lucide-react";
+import { Loader2, Phone, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { CallFollowUp } from "@/services/ai/schema";
+import { AIDisclaimer } from "./ai-disclaimer";
 
 const OUTCOMES = Object.keys(CALL_OUTCOME_LABELS) as CallOutcome[];
 type Step = "log" | "suggest" | "review";
@@ -241,6 +242,7 @@ export function LogCallDialog({
               <DialogTitle>Call logged</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4">
+              <AIDisclaimer />
               <p className="text-sm text-muted-foreground">
                 Want AI to suggest a follow-up plan based on this call?
               </p>
@@ -329,12 +331,7 @@ function FollowupReview({
         </div>
       ) : (
         <div className="flex min-h-0 flex-col gap-4">
-          <div className="flex items-start gap-3 rounded-lg border border-amber-200/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-            <p className="leading-relaxed">
-              AI suggestions can be wrong. Always verify before taking action.
-            </p>
-          </div>
+          <AIDisclaimer />
 
           <div className="grid gap-4 lg:grid-cols-3">
             <Card className="border-border/80 shadow-sm lg:col-span-2">

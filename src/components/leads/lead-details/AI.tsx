@@ -16,16 +16,8 @@ import {
 } from "@/lib/tanstack/useAI";
 import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
 import { useState } from "react";
+import { AIDisclaimer } from "./ai-disclaimer";
 import { BriefContent } from "./BriefContent";
-
-function Disclaimer() {
-  return (
-    <div className="flex items-start gap-2 rounded-md border bg-amber-50 p-3 text-sm text-amber-800">
-      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-      <p>AI suggestions can be wrong. Always verify before taking action.</p>
-    </div>
-  );
-}
 
 function ErrorMessage({ message }: { message: string }) {
   return (
@@ -88,7 +80,7 @@ export const AI = ({ leadId }: { leadId: string }) => {
           <p className="text-sm text-muted-foreground">
             AI will analyze this lead&apos;s activity history and suggest actions.
           </p>
-          <Disclaimer />
+          <AIDisclaimer />
           <Button onClick={handleGenerate} disabled={isPending}>
             {isPending ? (
               <>
@@ -116,7 +108,7 @@ export const AI = ({ leadId }: { leadId: string }) => {
             </Button>
           </div>
 
-          <Disclaimer />
+          <AIDisclaimer />
           <BriefContent brief={brief} />
           {error ? <ErrorMessage message={error} /> : null}
         </div>
@@ -129,7 +121,7 @@ export const AI = ({ leadId }: { leadId: string }) => {
           </DialogHeader>
           {generatedBrief ? (
             <div className="space-y-4">
-              <Disclaimer />
+              <AIDisclaimer />
               <BriefContent brief={generatedBrief} />
               <DialogFooter>
                 <Button onClick={handleSave} disabled={saveBrief.isPending}>
