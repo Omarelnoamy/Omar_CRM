@@ -28,6 +28,7 @@ model Profile {
   reminders     Reminder[]
   notifications Notification[]
   aiLeadBriefs  AILeadBrief[]
+  aiFollowupDrafts AIFollowupDraft[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -57,6 +58,7 @@ model Lead {
   reminders     Reminder[]
   notifications Notification[]
   aiLeadBriefs  AILeadBrief[]
+  aiFollowupDrafts AIFollowupDraft[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -162,3 +164,19 @@ model AILeadBrief {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model AIFollowupDraft {
+  id String @id @default(uuid())
+
+  leadId String
+  lead   Lead   @relation(fields: [leadId], references: [id])
+
+  followup Json
+
+  createdById String
+  createdBy   Profile @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+

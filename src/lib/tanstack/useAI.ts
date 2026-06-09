@@ -67,3 +67,19 @@ export function useGenerateCallFollowup(leadId: string) {
     },
   });
 }
+
+export function useSaveCallFollowUp(leadId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (followup: CallFollowUp) => {
+      const { data } = await api.post("/ai/call-followup/save", {
+        leadId,
+        followup,
+      });
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["activities"] });
+    },
+  });
+}

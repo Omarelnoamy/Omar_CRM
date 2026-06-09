@@ -1,4 +1,5 @@
 import { ActivityType, Profile } from "@/generated/prisma/client";
+import { GatewayResponseError } from "@ai-sdk/gateway";
 import {
   APICallError,
   LoadAPIKeyError,
@@ -11,6 +12,7 @@ import type { CallOutcome } from "../activity";
 import { createAIActivity } from "../activity/service";
 import { LeadServiceError } from "../lead/service";
 import {
+  dbCreateFollowupDraft,
   dbCreateLeadBrief,
   dbGetLastLeadBrief,
   dbGetLeadWithContext,
@@ -27,6 +29,7 @@ import {
   type CallFollowUp,
   leadBriefSchema,
   type LeadBrief,
+  SaveCallFollowUpRequest,
   SaveLeadBriefRequest,
 } from "./schema";
 
@@ -40,11 +43,56 @@ export class AIServiceError extends Error {
   }
 }
 
+/** When the gateway (or a proxy/ngrok layer) returns HTML or non-JSON instead of the SDK error shape. */
+function messageForUnstructuredGatewayFailure(input: {
+  statusCode?: number;
+  response?: unknown;
+  responseBody?: string;
+}): string {
+  const raw =
+    typeof input.response === "string"
+      ? input.response
+      : typeof input.responseBody === "string"
+        ? input.responseBody
+        : "";
+
+  const head = raw.slice(0, 500).toLowerCase();
+  if (
+    head.includes("<!doctype html") ||
+    head.includes("<html") ||
+    head.includes("<body")
+  ) {
+    return "The AI service returned a web page instead of data — common when ngrok shows an error (for example ERR_NGROK_3200) or a proxy blocks the request. Make sure your tunnel and dev server are running, then try again.";
+  }
+  if (head.includes("ngrok")) {
+    return "The response looks like an ngrok error. Check the tunnel and that your app is reachable at the forwarded address, then try again.";
+  }
+  return "The AI gateway returned an unexpected response. Check AI_GATEWAY_API_KEY, network connectivity, and try again shortly.";
+}
+
 function throwMappedAiError(error: unknown): never {
   if (LoadAPIKeyError.isInstance(error)) {
     throw new AIServiceError(
       "AI gateway key is missing or invalid. Set AI_GATEWAY_API_KEY in .env and restart the dev server.",
       503,
+    );
+  }
+  if (GatewayResponseError.isInstance(error)) {
+    const status =
+      error.statusCode >= 400 && error.statusCode < 600
+        ? error.statusCode
+        : 502;
+    const cause = error.cause;
+    throw new AIServiceError(
+      messageForUnstructuredGatewayFailure({
+        statusCode: error.statusCode,
+        response: error.response,
+        responseBody:
+          APICallError.isInstance(cause) && typeof cause.responseBody === "string"
+            ? cause.responseBody
+            : undefined,
+      }),
+      status,
     );
   }
   if (APICallError.isInstance(error)) {
@@ -53,8 +101,18 @@ function throwMappedAiError(error: unknown): never {
       typeof error.responseBody === "string"
         ? error.responseBody.slice(0, 800)
         : undefined;
-    const message =
+    let message =
       body?.trim() || error.message || "AI gateway request failed";
+
+    if (
+      message.includes("Invalid error response format") ||
+      (body && body.trimStart().startsWith("<"))
+    ) {
+      message = messageForUnstructuredGatewayFailure({
+        statusCode: status,
+        responseBody: body,
+      });
+    }
 
     if (status === 401 || status === 403) {
       throw new AIServiceError(
@@ -249,4 +307,35 @@ export async function generateCallFollowup(
   }
 
   return output;
+}
+
+export async function saveCallFollowUp(
+  request: SaveCallFollowUpRequest,
+  user: Profile,
+) {
+  const lead = await dbGetLeadWithContext(request.leadId);
+  if (!lead) {
+    throw new LeadServiceError("Lead not found", 404);
+  }
+
+  if (!validateLeadAccess(lead.assignedTo?.id, { id: user.id, role: user.role })) {
+    throw new LeadServiceError("Unauthorized", 403);
+  }
+
+  const row = await dbCreateFollowupDraft(request, user);
+
+  const activityResult = await createAIActivity({
+    type: ActivityType.AI_FOLLOWUP_DRAFT_GENERATED,
+    leadId: request.leadId,
+    actorId: user.id,
+    content: `Call follow-up draft saved by ${user.name}`,
+  });
+  if (!activityResult.success) {
+    throw new AIServiceError(
+      `Failed to log activity: ${JSON.stringify(activityResult.errors)}`,
+      500,
+    );
+  }
+
+  return row;
 }

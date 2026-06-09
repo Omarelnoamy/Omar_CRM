@@ -1,6 +1,6 @@
 import { Profile } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { SaveLeadBriefRequest } from "./schema";
+import { SaveCallFollowUpRequest, SaveLeadBriefRequest } from "./schema";
 
 export async function dbGetLeadWithContext(leadId: string) {
   return prisma.lead.findUnique({
@@ -83,6 +83,19 @@ export async function dbGetLastLeadBrief(leadId: string) {
       createdAt: true,
       updatedAt: true,
       createdById: true,
+    },
+  });
+}
+
+export async function dbCreateFollowupDraft(
+  request: SaveCallFollowUpRequest,
+  user: Profile,
+) {
+  return prisma.aIFollowupDraft.create({
+    data: {
+      leadId: request.leadId,
+      followup: request.followup,
+      createdById: user.id,
     },
   });
 }

@@ -22,7 +22,7 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { getApiErrorMessage } from "@/lib/get-api-error-message";
 import { useLogCallAttempt } from "@/lib/tanstack/useActivities";
-import { useGenerateCallFollowup } from "@/lib/tanstack/useAI";
+import { useGenerateCallFollowup, useSaveCallFollowUp } from "@/lib/tanstack/useAI";
 import { useCreateLeadReminder } from "@/lib/tanstack/useReminders";
 import {
   CALL_OUTCOME_LABELS,
@@ -49,6 +49,7 @@ export function LogCallDialog({
   const [outcome, setOutcome] = useState<CallOutcome | "">("");
   const [notes, setNotes] = useState("");
   const [localError, setLocalError] = useState<string | null>(null);
+  const [draftSaved, setDraftSaved] = useState(false);
 
   const logCall = useLogCallAttempt(leadId, {
     onSuccess: () => {
@@ -57,20 +58,28 @@ export function LogCallDialog({
     },
   });
   const generateFollowup = useGenerateCallFollowup(leadId);
+  const saveFollowup = useSaveCallFollowUp(leadId);
   const createReminder = useCreateLeadReminder(leadId);
 
   const errorMessage = (() => {
     if (localError) return localError;
-    const err = logCall.error;
-    if (!err) return null;
-    if (isAxiosError(err)) {
-      const d = err.response?.data;
-      if (d && typeof d === "object" && "error" in d) {
-        const e = (d as { error: unknown }).error;
-        if (typeof e === "string") return e;
+    const fromMutation = (err: unknown | null | undefined, fb: string) => {
+      if (!err) return null;
+      if (isAxiosError(err)) {
+        const d = err.response?.data;
+        if (d && typeof d === "object" && "error" in d) {
+          const e = (d as { error: unknown }).error;
+          if (typeof e === "string") return e;
+        }
       }
-    }
-    return getApiErrorMessage(err, "Could not log call");
+      return getApiErrorMessage(err, fb);
+    };
+    return (
+      fromMutation(createReminder.error, "Could not create reminder") ??
+      fromMutation(saveFollowup.error, "Could not save draft") ??
+      fromMutation(generateFollowup.error, "Could not generate suggestion") ??
+      fromMutation(logCall.error, "Could not log call")
+    );
   })();
 
   async function handleSubmit(event: FormEvent) {
@@ -93,7 +102,9 @@ export function LogCallDialog({
     setOutcome("");
     setNotes("");
     setLocalError(null);
+    setDraftSaved(false);
     generateFollowup.reset();
+    saveFollowup.reset();
     createReminder.reset();
   }
 
@@ -102,6 +113,7 @@ export function LogCallDialog({
   async function handleGenerateSuggestion() {
     if (!outcome) return;
     setLocalError(null);
+    setDraftSaved(false);
     try {
       await generateFollowup.mutateAsync({
         callOutcome: outcome,
@@ -110,6 +122,17 @@ export function LogCallDialog({
       setStep("review");
     } catch (error) {
       setLocalError(getApiErrorMessage(error, "Could not generate suggestion"));
+    }
+  }
+
+  async function handleSaveDraft() {
+    if (!followup) return;
+    setLocalError(null);
+    try {
+      await saveFollowup.mutateAsync(followup);
+      setDraftSaved(true);
+    } catch (error) {
+      setLocalError(getApiErrorMessage(error, "Could not save draft"));
     }
   }
 
@@ -262,7 +285,7 @@ export function LogCallDialog({
               <Button
                 type="button"
                 onClick={handleGenerateSuggestion}
-                disabled={generateFollowup.isPending}
+                disabled={generateFollowup.isPending || saveFollowup.isPending}
               >
                 {generateFollowup.isPending ? (
                   <>
@@ -283,10 +306,13 @@ export function LogCallDialog({
         {step === "review" ? (
           <FollowupReview
             followup={followup}
+            draftSaved={draftSaved}
             isCreatingReminder={createReminder.isPending}
+            isSavingDraft={saveFollowup.isPending}
             errorMessage={errorMessage}
             onCreateReminder={handleCreateReminder}
             onDiscard={resetAndClose}
+            onSaveDraft={handleSaveDraft}
           />
         ) : null}
       </DialogContent>
@@ -304,23 +330,30 @@ function sectionLabel(text: string) {
 
 function FollowupReview({
   followup,
+  draftSaved,
   isCreatingReminder,
+  isSavingDraft,
   errorMessage,
   onCreateReminder,
   onDiscard,
+  onSaveDraft,
 }: {
   followup?: CallFollowUp;
+  draftSaved: boolean;
   isCreatingReminder: boolean;
+  isSavingDraft: boolean;
   errorMessage: string | null;
   onCreateReminder: () => void;
   onDiscard: () => void;
+  onSaveDraft: () => void;
 }) {
   return (
     <div className="flex min-h-0 flex-col gap-4">
       <DialogHeader className="shrink-0 space-y-1 text-left">
         <DialogTitle className="text-lg">AI follow-up suggestion</DialogTitle>
         <p className="text-sm font-normal text-muted-foreground">
-          Review the draft below, then save a reminder or discard.
+          Save the draft to store it and log it on the timeline, create a reminder
+          from the suggestion, or discard.
         </p>
       </DialogHeader>
 
@@ -416,18 +449,37 @@ function FollowupReview({
         </div>
       )}
 
+      {draftSaved ? (
+        <p className="text-sm text-muted-foreground">
+          Draft saved. You can create a reminder or close when finished.
+        </p>
+      ) : null}
+
       {errorMessage ? (
         <p className="text-sm text-destructive">{errorMessage}</p>
       ) : null}
 
-      <DialogFooter className="shrink-0 border-t border-border/60 bg-muted/20 pt-4 sm:justify-end">
+      <DialogFooter className="shrink-0 flex-col gap-2 border-t border-border/60 bg-muted/20 pt-4 sm:flex-row sm:justify-end">
         <Button type="button" variant="outline" onClick={onDiscard}>
           Discard
         </Button>
         <Button
           type="button"
+          variant="secondary"
+          onClick={onSaveDraft}
+          disabled={
+            !followup ||
+            isSavingDraft ||
+            isCreatingReminder ||
+            draftSaved
+          }
+        >
+          {isSavingDraft ? "Saving..." : draftSaved ? "Saved" : "Save draft"}
+        </Button>
+        <Button
+          type="button"
           onClick={onCreateReminder}
-          disabled={!followup || isCreatingReminder}
+          disabled={!followup || isCreatingReminder || isSavingDraft}
         >
           {isCreatingReminder ? "Creating Reminder..." : "Create Reminder"}
         </Button>
