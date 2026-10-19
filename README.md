@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CRM Pro
 
-## Getting Started
+A full-stack customer relationship management application built with Next.js, TypeScript, Prisma, and PostgreSQL, featuring AI-assisted lead insights and call follow-up workflows.
 
-First, run the development server:
+## Overview
+
+CRM Pro brings lead management, activity tracking, reminders, and AI-assisted workflows into one web application. The codebase separates business logic into services and validates AI-generated responses against typed schemas.
+
+## Features
+
+- **Lead management:** Lead-related business logic and activity history.
+- **AI lead briefs:** Generate structured summaries, key facts, risks, recommended next actions, and questions for future conversations.
+- **AI call follow-ups:** Generate suggested call scripts, objection responses, next steps, and reminder recommendations.
+- **Structured AI responses:** Validate model output with Zod schemas.
+- **Context-aware generation:** Use lead details and recent activity; avoid unnecessary model calls when there is insufficient lead history.
+- **AI gateway error handling:** Handle missing or invalid credentials, rate limits, malformed gateway responses, and output validation failures.
+- **Reminders and notifications:** Dedicated service and API modules.
+
+## Technology stack
+
+| Area | Technologies |
+| --- | --- |
+| Application | Next.js 16, React 19, TypeScript |
+| Database | PostgreSQL, Prisma |
+| AI | Vercel AI SDK, AI Gateway, Zod |
+| UI | Tailwind CSS, Radix UI |
+| Supporting services | Supabase, Upstash QStash, Redis |
+| Data fetching | TanStack Query |
+
+## Architecture and code highlights
+
+The AI implementation lives in `src/services/ai/`:
+
+- [`service.ts`](src/services/ai/service.ts) — AI generation workflows, activity logging, insufficient-context handling, and error mapping.
+- [`schema.ts`](src/services/ai/schema.ts) — Zod schemas for lead briefs and call follow-ups.
+- [`helpers.ts`](src/services/ai/helpers.ts) — prompt construction and supporting checks.
+- [`db.ts`](src/services/ai/db.ts) — data access for AI workflows.
+- [`index.ts`](src/services/ai/index.ts) — public service exports.
+
+Other modules include `src/services/lead/`, `src/services/activity/`, `src/services/reminders/`, and `src/app/api/`.
+
+## Local development
+
+### Prerequisites
+
+- Node.js and npm
+- PostgreSQL
+- Credentials and configuration for the external services used by your environment
 
 ```bash
+npm install
+npx prisma generate
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Additional commands: `npm run build`, `npm run lint`, and `npm run start`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Configure required environment variables locally. Do not commit API keys, credentials, or real customer information.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Engineering highlights
 
-## Learn More
+- Typed, service-oriented backend architecture
+- Structured LLM generation integrated with application data
+- Input/output validation with Zod
+- Database-backed business workflows
+- Defensive error handling for AI provider failures
 
-To learn more about Next.js, take a look at the following resources:
+## Author
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+**Omar Elnoamy** — M.Sc. Computer Science student, TU Darmstadt
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+[GitHub profile](https://github.com/Omarelnoamy)
